@@ -1,0 +1,46 @@
+#!/bin/bash
+#SBATCH --job-name=somme
+#SBATCH --nodes=4
+#SBATCH --ntasks-per-node=4
+#SBATCH --time=00:01:00
+unset SLURM_GTIDS
+ulimit -l unlimited
+
+echo ------------------------------------------------------
+echo SLURM_NNODES: $SLURM_NNODES
+echo SLURM_JOB_NODELIST: $SLURM_JOB_NODELIST
+echo SLURM_SUBMIT_DIR: $SLURM_SUBMIT_DIR
+echo SLURM_SUBMIT_HOST: $SLURM_SUBMIT_HOST
+echo SLURM_JOB_ID: $SLURM_JOB_ID
+echo SLURM_JOB_NAME: $SLURM_JOB_NAME
+echo SLURM_JOB_PARTITION: $SLURM_JOB_PARTITION
+echo SLURM_NTASKS: $SLURM_NTASKS
+echo SLURM_TASKS_PER_NODE: $SLURM_TASKS_PER_NODE
+echo SLURM_NTASKS_PER_NODE: $SLURM_NTASKS_PER_NODE
+echo ------------------------------------------------------
+
+echo Generating hostname list...
+COMPUTEHOSTLIST=$( scontrol show hostnames $SLURM_JOB_NODELIST |paste -d, -s )
+echo ------------------------------------------------------
+
+echo Creating SCRATCH directories on nodes $SLURM_JOB_NODELIST...
+SCRATCH=/scratch/somme_res-$SLURM_JOB_ID
+srun -n$SLURM_NNODES mkdir -m 770 -p $SCRATCH  || exit $?
+echo ------------------------------------------------------
+echo Transferring files from frontend to compute nodes $SLURM_JOB_NODELIST
+srun -n$SLURM_NNODES cp -rvf $SLURM_SUBMIT_DIR/Somme $SCRATCH  || exit $?
+echo ------------------------------------------------------
+
+echo Run -mpi program...
+module load mpi/openmpi-x86_64
+cd $SCRATCH
+mpirun -np $SLURM_NTASKS -npernode $SLURM_NTASKS_PER_NODE -mca mtl psm2 -host $COMPUTEHOSTLIST $SLURM_SUBMIT_DIR/Somme 100000
+echo ------------------------------------------------------
+
+echo Transferring result files from compute nodes to frontend
+# srun -n$SLURM_NNODES cp -rvf $SCRATCH  $SLURM_SUBMIT_DIR   || exit $?
+echo ------------------------------------------------------
+echo Deleting scratch...
+srun -n$SLURM_NNODES rm -rvf $SCRATCH  || exit 0
+echo ------------------------------------------------------
+
