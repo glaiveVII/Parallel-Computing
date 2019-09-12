@@ -1,4 +1,5 @@
-# Parallel-Computing
+# Parallel-Computing 
+## I did repports to compare time and space complexity
 I've done some parallel code to study the temporal complexity ! 
 To do my code I've used Opem MP and MPI. 
 
